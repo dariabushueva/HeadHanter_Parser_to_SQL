@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "hh-parser-sql"
+version = "0.1.0"
+description = "parser_vacancies"
+authors = ["DariaBushueva <bushueva84@yandex.ru>"]
+readme = "README.md"
+packages = [{include = "hh_parser_sql"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
