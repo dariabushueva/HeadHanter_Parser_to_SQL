@@ -21,36 +21,30 @@ def get_hh_employers(employer_ids: list[str]) -> list[dict[str, Any]]:
     return employers
 
 
-def get_hh_vacancies(employer_ids: list[str], pages_amount=20) -> list[dict[str, Any]]:
+def get_hh_vacancies(employer_ids: list[str], page=0) -> list[dict[str, Any]]:
     """ Получение данных о вакансиях с помощью API """
-
-    params = {
-        'employer_id': employer_ids,  # Идентификатор работодателя
-        'page': None,
-        'per_page': 100,  # Кол-во вакансий на 1 странице
-        'archived': False  # Не включать архивные вакансии
-    }
-
-    response = requests.get('https://api.hh.ru/vacancies', params=params)
-    if response.status_code != 200:
-        raise Exception(f"Ошибка получения данных {response.status_code}")
-    vacancies_data = response.json()
 
     vacancies = []
     vacancies.clear()
+    for page in range(0, 20):
 
-    for page in range(0, pages_amount):
-        params['page'] = page
-        try:
-            page_vacancies = vacancies_data["items"]
-            print(f"Загружаю {page + 1} страницу с вакансиями")
-        except Exception as error:
-            print(error)
-        else:
-            vacancies.extend(page_vacancies)
+        params = {
+            'employer_id': employer_ids,  # Идентификатор работодателя
+            'page': page,
+            'per_page': 100,  # Кол-во вакансий на 1 странице
+            'archived': False  # Не включать архивные вакансии
+        }
+
+        response = requests.get('https://api.hh.ru/vacancies', params=params)
+        if response.status_code != 200:
+            raise Exception(f"Ошибка получения данных {response.status_code}")
+        vacancies_data = response.json()
+        vacancies.extend(vacancies_data["items"])
+        print(f"Загружаю {page + 1} страницу с вакансиями")
         if (vacancies_data['pages'] - page) <= 1:  # Проверка на последнюю страницу, если вакансий меньше 2000
             break
         time.sleep(0.25)
+
     return vacancies
 
 
@@ -71,7 +65,7 @@ def create_database(db_name: str, db_params: dict) -> None:
     with conn.cursor() as cur:
         cur.execute("""
                 CREATE TABLE employers (
-                    employer_id SERIAL PRIMARY KEY,
+                    employer_id INTEGER PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     open_vacancies INTEGER,
                     site_url TEXT,
@@ -112,25 +106,26 @@ def save_data_to_database(employers_data: list[dict[str, Any]],
         for employer in employers_data:
             cur.execute(
                 """
-                INSERT INTO employers (name, open_vacancies, site_url, hh_url)
-                VALUES (%s, %s, %s, %s)
-                RETURNING employer_id
+                INSERT INTO employers (employer_id, name, open_vacancies, site_url, hh_url)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
+                    employer['id'],
                     employer['name'],
                     employer['open_vacancies'],
                     employer['site_url'],
                     employer['alternate_url']
                 )
             )
-            employer_id = cur.fetchone()[0]
 
         for vacancy in vacancies_data:
+
             address = vacancy['address']
             if address is not None:
                 full_address = address['raw']
             else:
                 full_address = None
+
             salary = vacancy['salary']
             if salary:
                 salary_from = salary['from']
@@ -138,14 +133,14 @@ def save_data_to_database(employers_data: list[dict[str, Any]],
             else:
                 salary_from = None
                 salary_to = None
+
             cur.execute(
                 """
                 INSERT INTO vacancies (employer_id, name, salary_from, salary_to, city, address, publish_date, vacancy_url, requirement)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING employer_id
                 """,
                 (
-                    employer_id,
+                    vacancy['employer']['id'],
                     vacancy['name'],
                     salary_from,
                     salary_to,
