@@ -30,7 +30,7 @@ def get_hh_vacancies(employer_ids: list[str], page=0) -> list[dict[str, Any]]:
 
         params = {
             'employer_id': employer_ids,  # Идентификатор работодателя
-            'page': page,
+            'page': page,  # Номер страницы
             'per_page': 100,  # Кол-во вакансий на 1 странице
             'archived': False  # Не включать архивные вакансии
         }
@@ -66,7 +66,7 @@ def create_database(db_name: str, db_params: dict) -> None:
         cur.execute("""
                 CREATE TABLE employers (
                     employer_id INTEGER PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
+                    title VARCHAR(255) NOT NULL,
                     open_vacancies INTEGER,
                     site_url TEXT,
                     hh_url TEXT NOT NULL
@@ -78,7 +78,7 @@ def create_database(db_name: str, db_params: dict) -> None:
                 CREATE TABLE vacancies (
                     vacancy_id SERIAL PRIMARY KEY,
                     employer_id INTEGER REFERENCES employers(employer_id),
-                    name VARCHAR(255) NOT NULL,
+                    title VARCHAR(255) NOT NULL,
                     salary_from INTEGER,
                     salary_to INTEGER,
                     city VARCHAR(50),
@@ -100,13 +100,12 @@ def save_data_to_database(employers_data: list[dict[str, Any]],
     """Сохраняет данные о канале и видео в базу данных"""
 
     conn = psycopg2.connect(dbname=db_name, **db_params)
-
     with conn.cursor() as cur:
 
         for employer in employers_data:
             cur.execute(
                 """
-                INSERT INTO employers (employer_id, name, open_vacancies, site_url, hh_url)
+                INSERT INTO employers (employer_id, title, open_vacancies, site_url, hh_url)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
@@ -136,7 +135,8 @@ def save_data_to_database(employers_data: list[dict[str, Any]],
 
             cur.execute(
                 """
-                INSERT INTO vacancies (employer_id, name, salary_from, salary_to, city, address, publish_date, vacancy_url, requirement)
+                INSERT INTO vacancies (employer_id, title, salary_from, salary_to, city, 
+                                        address, publish_date, vacancy_url, requirement)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
