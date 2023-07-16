@@ -1,3 +1,4 @@
+import os
 from config import config
 from src.db_manager import DBManager
 from src.utils import get_hh_employers, get_hh_vacancies, create_database, save_data_to_database
@@ -17,11 +18,13 @@ def main():
                     '3536900']  # Платформа ОФД
     params = config()
 
+    url_queries = os.path.join("src", "queries.sql")
+
     employer_data = get_hh_employers(employer_ids)
     vacancies_data = get_hh_vacancies(employer_ids)
     create_database('headhanter', params)
     save_data_to_database(employer_data, vacancies_data, 'headhanter', params)
-    db_manager = DBManager('headhanter', params)
+    db_manager = DBManager('headhanter', params, url_queries)
 
     while True:
         select = input(
